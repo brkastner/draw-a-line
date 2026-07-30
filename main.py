@@ -1,22 +1,29 @@
+from collections import defaultdict
 from decimal import Decimal
 
 import click
 
 
-def _calculate_all_points_in_line(x1: int, y1: int, x2: int, y2: int) -> dict[int, int]:
-    points: dict[int, int] = {}
-    slope = (y2 - y1) / (x2 - x1)
-    b = y1 - slope * x1
-    current_x = x1
-    while current_x <= x2:
-        y = int(round(Decimal(slope * current_x + b), 0))
-        points[y] = current_x
+def _calculate_all_points_in_line(x1: int, y1: int, x2: int, y2: int) -> defaultdict[int, list]:
+    points: defaultdict[int, list] = defaultdict(list)
+    # special handling for vertical line
+    if (start_x := min(x1, x2)) == (end_x := max(x1, x2)):
+        for y in range(min(y2, y1), max(y2, y1) + 1):
+            points[y].append(start_x)
+        return points
+
+    # solve for y = mx + b
+    slope = (y2 - y1) / (end_x - start_x)
+    b = int(round(y1 - slope * x1, 0))
+
+    current_x = start_x
+    while current_x <= end_x:
+        points[int(round(slope * current_x, 0) + b)].append(current_x)
         current_x += 1
     return points
 
 
 def _generate_graph(point1: str, point2: str):
-    click.echo('parsing inputs')
     try:
         x1, y1 = point1.split(',')
         x1 = int(x1)
@@ -30,27 +37,17 @@ def _generate_graph(point1: str, point2: str):
 
     max_x = max(x1, x2)
     max_y = max(y1, y2)
-    click.echo(f'max x {max_x} max y {max_y}')
     points = _calculate_all_points_in_line(x1, y1, x2, y2)
-    click.echo(f'got points {points}')
-    y_iter = max_y
+    y_iter = max(max_y, 10)
     while y_iter >= 0:
-        # skip columns with no line
-        line_x = points.get(y_iter, None)
-        if line_x is None:
-            y_iter -= 1
-            continue
-
         # loop through each row
+        x_points = points.get(y_iter, set())
         x_iter = 0
-        while x_iter <= max_x:
-            is_line = x_iter == line_x
+        while x_iter <= max(max_x, 10):
+            click.echo(" ● " if x_iter in x_points else " ○ ", nl=False)
             x_iter += 1
-            if is_line:
-                click.echo("X", nl=False)
-                continue
-            click.echo(" ", nl=False)
 
+        # newline
         click.echo("")
         y_iter -= 1
 
@@ -73,5 +70,5 @@ TESTS = [
 
 if __name__ == '__main__':
     for xpos, ypos in TESTS:
-        click.echo(f'{xpos} -> {ypos}')
+        click.echo(f'({xpos}) -> ({ypos})')
         _generate_graph(xpos, ypos)
